@@ -14,15 +14,12 @@ import com.androidnetworking.common.Priority
 import com.androidnetworking.error.ANError
 import com.androidnetworking.interfaces.DownloadListener
 import com.androidnetworking.interfaces.DownloadProgressListener
-import com.androidnetworking.interfaces.JSONObjectRequestListener
 import com.test.testuploaddownload.commo.UploadService
 import com.test.testuploaddownload.common.Constant
 import com.test.testuploaddownload.databinding.ActivityMainBinding
 import com.test.testuploaddownload.ui.main.viewModel.MainActivityViewModel
+import com.test.testuploaddownload.utilities.FileUtils
 import com.test.testuploaddownload.utilities.extension.observe
-import org.json.JSONObject
-import java.io.File
-
 
 class MainActivity : AppCompatActivity(), UploadService.Delegate {
 
@@ -56,20 +53,20 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
         fileImportLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == Activity.RESULT_OK) {
-                    result.data?.data?.apply {
-                        val file = File(result?.data?.data?.toString()?: "")
-                        println(result?.data?.data.toString())
+                    result.data?.data?.let { uri ->
+                        val file = FileUtils.copyFileToTemp(applicationContext, uri)
                         println(file.name)
-                        uploadService.upload(file, Constant.Api.UPLOAD_ATTACHMENT_PATH)
+                        uploadService.upload(file)
                     }
                 }
             }
+
     }
 
     private fun pickFile() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"//Constant.PDF_TYPE
+            type = "*/*"
         }
         fileImportLauncher.launch(intent)
     }
@@ -91,11 +88,16 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
             })
             .startDownload(object : DownloadListener {
                 override fun onDownloadComplete() {
-                    Toast.makeText(applicationContext, "Download Completed", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Download Completed", Toast.LENGTH_SHORT)
+                        .show()
                 }
 
                 override fun onError(error: ANError?) {
-                    Toast.makeText(applicationContext, "Download failed: ${error?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        applicationContext,
+                        "Download failed: ${error?.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             })
     }
@@ -104,6 +106,6 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
         viewModel.fileName = fileName
         viewModel.fileID = fileId
         binding.uploadTxt.text = "Uploaded file: $fileName"
-        binding.uploadTxt.visibility= View.VISIBLE
+        binding.uploadTxt.visibility = View.VISIBLE
     }
 }

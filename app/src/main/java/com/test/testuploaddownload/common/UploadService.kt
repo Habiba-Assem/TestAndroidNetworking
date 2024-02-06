@@ -19,8 +19,9 @@ class UploadService(
     private val delegate: Delegate
 ) {
 
+    fun upload(fileToUpload: File) {
 
-    fun upload(fileToUpload: File, url:String) {
+        val url = Constant.Api.UPLOAD_ATTACHMENT_PATH
         AndroidNetworking.upload(url)
             .addMultipartFile("file", fileToUpload)
             .addHeaders("x-qms-access-key", "5984B9EC-6411-485F-AC58-9BD2BD734D2A")
@@ -34,9 +35,12 @@ class UploadService(
             .getAsJSONObject(object : JSONObjectRequestListener {
                 override fun onResponse(response: JSONObject) {
                     // do anything with response
-                    val fileName = response.optString("fileName", "") // Extract the file name from the "fileName" field
+                    val fileName = response.optString(
+                        "fileName",
+                        ""
+                    ) // Extract the file name from the "fileName" field
                     val bodyString = response.toString()
-                    val responseObject = Gson().fromJson(bodyString,Response::class.java)
+                    val responseObject = Gson().fromJson(bodyString, Response::class.java)
                     val itemId = responseObject?.item?.id ?: -1
                     delegate.onFinishUploading(itemId, fileName)
                     Toast.makeText(context, "Upload successful", Toast.LENGTH_SHORT).show()
@@ -46,7 +50,8 @@ class UploadService(
                     println("Upload failed: ${error.message}")
                     delegate.onFinishUploading(-1, fileToUpload.name)
                     // handle error
-                    Toast.makeText(context, "Upload failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Upload failed: ${error.message}", Toast.LENGTH_SHORT)
+                        .show()
                 }
             })
     }
@@ -56,18 +61,18 @@ class UploadService(
     }
 
 
-    data class Response (
-        @SerializedName("item") val item : Item,
-        @SerializedName("status") val status : Status
+    data class Response(
+        @SerializedName("item") val item: Item,
+        @SerializedName("status") val status: Status
     )
 
-    data class Status (
-        @SerializedName("statusCode") val statusCode : Int,
-        @SerializedName("reason") val reason : String
+    data class Status(
+        @SerializedName("statusCode") val statusCode: Int,
+        @SerializedName("reason") val reason: String
     )
 
-    data class Item (
-        @SerializedName("id") val id : Int
+    data class Item(
+        @SerializedName("id") val id: Int
     )
 
 }
