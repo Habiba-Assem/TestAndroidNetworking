@@ -63,6 +63,7 @@ dependencies {
 
     //Networking library
     implementation ("com.amitshekhar.android:android-networking:1.0.2")
+    implementation ("com.amitshekhar.android:jackson-android-networking:1.0.2")
     implementation ("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     //test

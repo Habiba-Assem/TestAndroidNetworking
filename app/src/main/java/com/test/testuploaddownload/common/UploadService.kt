@@ -7,6 +7,7 @@ import com.androidnetworking.AndroidNetworking
 import com.androidnetworking.common.Priority
 import com.androidnetworking.error.ANError
 import com.androidnetworking.interfaces.JSONObjectRequestListener
+import com.androidnetworking.interfaces.UploadProgressListener
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.test.testuploaddownload.common.Constant
@@ -14,14 +15,11 @@ import org.json.JSONObject
 import java.io.File
 
 
-class UploadService(
-    private val context: Context,
-    private val delegate: Delegate
-) {
+class UploadService(private val context: Context, private val delegate: Delegate) {
 
     fun upload(fileToUpload: File) {
-
         val url = Constant.Api.UPLOAD_ATTACHMENT_PATH
+
         AndroidNetworking.upload(url)
             .addMultipartFile("file", fileToUpload)
             .addHeaders("x-qms-access-key", "5984B9EC-6411-485F-AC58-9BD2BD734D2A")
@@ -29,16 +27,11 @@ class UploadService(
             .setTag("uploadTest")
             .setPriority(Priority.HIGH)
             .build()
-            .setUploadProgressListener { _, _ ->
-                // do anything with progress
-            }
+            .setUploadProgressListener { _, _ -> delegate.enableLoading() }
             .getAsJSONObject(object : JSONObjectRequestListener {
                 override fun onResponse(response: JSONObject) {
                     // do anything with response
-                    val fileName = response.optString(
-                        "fileName",
-                        ""
-                    ) // Extract the file name from the "fileName" field
+                    val fileName = fileToUpload.name
                     val bodyString = response.toString()
                     val responseObject = Gson().fromJson(bodyString, Response::class.java)
                     val itemId = responseObject?.item?.id ?: -1
@@ -49,15 +42,14 @@ class UploadService(
                 override fun onError(error: ANError) {
                     println("Upload failed: ${error.message}")
                     delegate.onFinishUploading(-1, fileToUpload.name)
-                    // handle error
-                    Toast.makeText(context, "Upload failed: ${error.message}", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(context, "Upload failed: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
             })
     }
 
     interface Delegate {
         fun onFinishUploading(fileId: Int, fileName: String)
+        fun enableLoading()
     }
 
 

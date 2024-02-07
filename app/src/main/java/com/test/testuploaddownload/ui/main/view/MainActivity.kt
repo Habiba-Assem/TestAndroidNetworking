@@ -13,13 +13,16 @@ import com.androidnetworking.AndroidNetworking
 import com.androidnetworking.common.Priority
 import com.androidnetworking.error.ANError
 import com.androidnetworking.interfaces.DownloadListener
-import com.androidnetworking.interfaces.DownloadProgressListener
+import com.jacksonandroidnetworking.JacksonParserFactory
 import com.test.testuploaddownload.commo.UploadService
 import com.test.testuploaddownload.common.Constant
 import com.test.testuploaddownload.databinding.ActivityMainBinding
 import com.test.testuploaddownload.ui.main.viewModel.MainActivityViewModel
 import com.test.testuploaddownload.utilities.FileUtils
 import com.test.testuploaddownload.utilities.extension.observe
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
+
 
 class MainActivity : AppCompatActivity(), UploadService.Delegate {
 
@@ -39,7 +42,12 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
     }
 
     private fun initUi() {
-        AndroidNetworking.initialize(applicationContext)
+        val okHttpClient = OkHttpClient().newBuilder()
+            .connectTimeout(2, TimeUnit.MINUTES)
+            .readTimeout(2, TimeUnit.MINUTES)
+            .build()
+        AndroidNetworking.initialize(applicationContext, okHttpClient)
+        AndroidNetworking.setParserFactory(JacksonParserFactory())
         uploadService = UploadService(applicationContext, this)
         setUpLauncher()
     }
@@ -55,6 +63,7 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
                 if (result.resultCode == Activity.RESULT_OK) {
                     result.data?.data?.let { uri ->
                         val file = FileUtils.copyFileToTemp(applicationContext, uri)
+                        println(file)
                         println(file.name)
                         uploadService.upload(file)
                     }
@@ -73,31 +82,24 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
 
 
     private fun downloadFile() {
-
         val fileUrl = Constant.Api.getAttachmentUrl(viewModel.fileID)
+
         AndroidNetworking.download(fileUrl, Constant.DOWNLOADS_DIR, fileUrl)
             .setTag(Constant.Api.DOWNLOAD_TAG)
             .addHeaders("x-qms-access-key", "5984B9EC-6411-485F-AC58-9BD2BD734D2A")
             .addHeaders(Constant.Api.SESSION_ID, Constant.Api.PREFIX_TOKEN + Constant.token)
             .setPriority(Priority.MEDIUM)
             .build()
-            .setDownloadProgressListener(object : DownloadProgressListener {
-                override fun onProgress(bytesDownloaded: Long, totalBytes: Long) {
-                    // do anything with progress
-                }
-            })
+            .setDownloadProgressListener { _, _ -> enableLoading() }
             .startDownload(object : DownloadListener {
                 override fun onDownloadComplete() {
-                    Toast.makeText(applicationContext, "Download Completed", Toast.LENGTH_SHORT)
-                        .show()
+                    binding.progressBar.visibility= View.GONE
+                    Toast.makeText(applicationContext, "Download Completed", Toast.LENGTH_SHORT).show()
                 }
 
                 override fun onError(error: ANError?) {
-                    Toast.makeText(
-                        applicationContext,
-                        "Download failed: ${error?.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(applicationContext, "Download failed: ${error?.message}", Toast.LENGTH_SHORT).show()
+                    println("Download failed: ${error?.message}")
                 }
             })
     }
@@ -107,5 +109,10 @@ class MainActivity : AppCompatActivity(), UploadService.Delegate {
         viewModel.fileID = fileId
         binding.uploadTxt.text = "Uploaded file: $fileName"
         binding.uploadTxt.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.GONE
+    }
+
+    override fun enableLoading() {
+        binding.progressBar.visibility=View.VISIBLE
     }
 }
